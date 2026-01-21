@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FALAGUASTA PIZZA EXPRESS - Localizador</title>
+    <!-- Favicon: 3 bolinhas Itália (Verde, Branco, Vermelho) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2225%22 cy=%2250%22 r=%2215%22 fill=%22%23009246%22/><circle cx=%2250%22 cy=%2250%22 r=%2215%22 fill=%22%23ffffff%22/><circle cx=%2275%22 cy=%2250%22 r=%2215%22 fill=%22%23ce2b37%22/></svg>">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,900&family=Inter:wght@400;500;600&display=swap');
+        
+        :root {
+            --brand-yellow: #f4c120;
+            --brand-black: #111111;
+            --brand-red: #c21b2f;
+            --bg-dark: #0a0a0a;
+            --card-dark: #1a1a1a;
+            
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Inter', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        h1, h2, .btn-yellow, .badge-closest, .font-display {
+            font-family: var(--font-display);
+            font-stretch: 125%;
+            text-transform: uppercase;
+        }
+
+        /* --- SPLASH SCREEN STYLES --- */
+        #splash-screen {
+            transition: opacity 0.8s ease-out, visibility 0.8s;
+        }
+        
+        .splash-logo-anim {
+            animation: logoEntrance 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        @keyframes logoEntrance {
+            0% { opacity: 0; transform: scale(0.8) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Input Styles */
+        .search-container {
+            background-color: var(--card-dark);
+            border: 1px solid #333;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+        .search-container:focus-within {
+            border-color: var(--brand-yellow);
+            box-shadow: 0 0 20px rgba(244, 193, 32, 0.1);
+            transform: translateY(-2px);
+        }
+        .search-input {
+            color: white;
+            font-family: var(--font-body);
+        }
+        .search-input::placeholder {
+            color: #666;
+        }
+
+        /* Botões */
+        .btn-yellow {
+            background-color: var(--brand-yellow);
+            color: var(--brand-black);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-weight: 900;
+            letter-spacing: 0.05em;
+        }
+        .btn-yellow:hover {
+            background-color: #ffcf33;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(244, 193, 32, 0.3);
+        }
+        .btn-yellow:active { transform: translateY(0); }
+
+        .btn-whatsapp {
+            background-color: #25D366;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-whatsapp:hover {
+            background-color: #20bd5a;
+            transform: translateY(-2px);
+        }
+
+        .btn-map {
+            background-color: #333;
+            color: white;
+            border: 1px solid #444;
+            transition: all 0.3s ease;
+        }
+        .btn-map:hover {
+            background-color: #444;
+            color: var(--brand-yellow);
+            transform: translateY(-2px);
+        }
+
+        /* Cards */
+        .card-unit {
+            background-color: var(--card-dark);
+            color: white;
+            border-radius: 20px;
+            border: 1px solid #333;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        .card-unit:hover {
+            transform: translateY(-3px) scale(1.01);
+            border-color: var(--brand-yellow);
+            box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.6);
+        }
+
+        .highlight-closest {
+            border: 2px solid var(--brand-yellow);
+            background: linear-gradient(145deg, #1a1a1a 0%, #252215 100%);
+            position: relative;
+        }
+        
+        .badge-closest {
+            background-color: var(--brand-yellow);
+            color: var(--brand-black);
+            font-weight: 900;
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            padding: 0.35rem 1rem;
+            border-bottom-left-radius: 1rem;
+            position: absolute;
+            top: 0;
+            right: 0;
+            box-shadow: -2px 2px 15px rgba(244, 193, 32, 0.2);
+        }
+
+        /* Scrollbar */
+        .suggestions-box {
+            background-color: var(--card-dark);
+            border-color: #333;
+            color: white;
+            font-family: var(--font-body);
+        }
+        .suggestions-box::-webkit-scrollbar { width: 6px; }
+        .suggestions-box::-webkit-scrollbar-track { background: #111; border-radius: 8px; }
+        .suggestions-box::-webkit-scrollbar-thumb { background: #444; border-radius: 8px; }
+        .suggestions-box li:hover { background-color: #2a2a2a; }
+
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .text-yellow-brand { color: var(--brand-yellow); }
+        h1, h2 { letter-spacing: -0.02em; }
+        
+        .header-overlay {
+            background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(10,10,10,1) 100%);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center pb-12">
+
+    <!-- SPLASH SCREEN -->
+    <div id="splash-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-black">
+        <div class="absolute inset-0 z-0">
+            <img src="https://47alanlima-erhlw.wordpress.com/wp-content/uploads/2025/12/primo-roberto-e28094-frango-com-catupiry-8.jpg" 
+                 class="w-full h-full object-cover opacity-60" 
+                 alt="Background Pizza">
+            <div class="absolute inset-0 bg-black/60"></div>
+        </div>
+        <div class="relative z-10 p-8 splash-logo-anim">
+            <img src="https://47alanlima-erhlw.wordpress.com/wp-content/uploads/2025/12/lofo-flgt-express-branco.png" 
+                 alt="FALAGUASTA PIZZA EXPRESS" 
+                 class="w-64 md:w-80 object-contain drop-shadow-2xl">
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTENT -->
+    <div id="app-content" class="w-full flex flex-col items-center transition-opacity duration-1000 opacity-0">
+
+        <!-- Header -->
+        <header class="w-full max-w-lg relative h-48 mb-2 flex items-center justify-center pt-8">
+            <div class="flex flex-col items-center justify-center">
+                <img src="https://47alanlima-erhlw.wordpress.com/wp-content/uploads/2025/12/lofo-flgt-express-branco.png" 
+                     alt="FALAGUASTA PIZZA EXPRESS" 
+                     class="h-32 object-contain drop-shadow-2xl"> 
+            </div>
+        </header>
+
+        <!-- Content Wrapper -->
+        <div class="w-full max-w-lg px-4 flex flex-col items-center relative z-10">
+            
+            <!-- Search Box -->
+            <div class="w-full relative group">
+                <div class="search-container rounded-2xl flex items-center p-2">
+                    <div class="pl-4 text-gray-500 group-hover:text-[var(--brand-yellow)] transition-colors">
+                        <i class="fas fa-search text-xl"></i>
+                    </div>
+                    <input type="text" id="address-input" 
+                        placeholder="Digite seu Endereço ou CEP..." 
+                        class="search-input w-full px-4 py-4 font-bold text-lg bg-transparent focus:outline-none"
+                        autocomplete="off">
+                    
+                    <button id="clear-btn" onclick="clearSearch()" class="hidden p-3 text-gray-500 hover:text-[var(--brand-red)] transition-colors">
+                        <i class="fas fa-times-circle text-xl"></i>
+                    </button>
+                </div>
+                
+                <ul id="suggestions-list" class="absolute left-2 right-2 top-full mt-2 rounded-xl shadow-2xl hidden max-h-64 overflow-y-auto overflow-x-hidden border border-gray-800 divide-y divide-gray-800 suggestions-box transform transition-all origin-top z-50"></ul>
+            </div>
+
+            <!-- Intro Text -->
+            <div class="text-center mt-8 mb-2">
+                 <h1 class="text-3xl font-black text-white leading-none">
+                    Encontre sua Unidade
+                </h1>
+                <p class="text-gray-400 font-medium text-sm mt-3 max-w-xs mx-auto">
+                    Descubra qual <span class="text-yellow-brand font-bold">Falaguasta Pizza Express</span> entrega mais rápido para você.
+                </p>
+            </div>
+
+            <!-- Address Feedback Badge -->
+            <div id="selected-address-box" class="w-full hidden fade-in mt-4">
+                <div class="bg-[#1a1a1a] text-white p-4 rounded-xl shadow-lg border-l-4 border-[var(--brand-yellow)] flex items-start gap-3 border border-gray-800">
+                    <i class="fas fa-map-marker-alt text-[var(--brand-yellow)] mt-1"></i>
+                    <div>
+                        <p class="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-1 font-display">Localização de referência</p>
+                        <p id="confirmed-address-text" class="text-sm font-semibold leading-snug">...</p>
+                        <p id="debug-location" class="text-[10px] text-gray-500 mt-1 italic"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Message -->
+            <div id="status-msg" class="w-full hidden fade-in text-center p-4 rounded-xl font-bold text-sm bg-gray-900 border border-gray-800 text-gray-300 shadow-sm mt-4"></div>
+
+        </div>
+
+        <!-- Results Section -->
+        <section id="results-area" class="w-full max-w-lg mt-8 hidden pb-20 fade-in px-2">
+            <div class="flex items-center gap-3 mb-6 px-1">
+                <div class="h-8 w-1 bg-[var(--brand-yellow)] rounded-full shadow-[0_0_10px_var(--brand-yellow)]"></div>
+                <h2 class="text-2xl font-black text-white">
+                    Unidades Próximas
+                </h2>
+            </div>
+            
+            <div id="units-list" class="space-y-4"></div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-auto py-8 text-center opacity-40 px-4">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-white font-display">FALAGUASTA PIZZA EXPRESS &copy; 2025</p>
+        </footer>
+
+    </div>
+
+    <script>
+        // --- SPLASH SCREEN ---
+        window.addEventListener('load', () => {
+            const splash = document.getElementById('splash-screen');
+            const appContent = document.getElementById('app-content');
+            setTimeout(() => {
+                splash.style.opacity = '0';
+                splash.style.visibility = 'hidden';
+                appContent.classList.remove('opacity-0');
+            }, 2500);
+        });
+
+        // --- DADOS UNIDADES ---
+        const units = [
+            { 
+                id: 'vargas', 
+                name: 'Unidade Vargas', 
+                address: 'Av. Presidente Vargas', 
+                lat: -21.1963, 
+                lng: -47.8123, 
+                link: 'https://pedido.takeat.app/falaguastaexpressvargas',
+                whatsapp: '5516997051553'
+            },
+            { 
+                id: 'botanico', 
+                name: 'Unidade Botânico', 
+                address: 'Av. Maurílio Biagi, 1450', 
+                lat: -21.1982, 
+                lng: -47.8001, 
+                link: 'https://pedido.takeat.app/falaguastadeliverybotanico',
+                whatsapp: '5516981636074'
+            },
+            { 
+                id: 'bonfim', 
+                name: 'Unidade Bonfim', 
+                address: 'Via Dr. Luiz Carlos Bianchi, 1745', 
+                lat: -21.2355, 
+                lng: -47.8251, 
+                link: 'https://pedido.takeat.app/falaguastadeliverybonfim',
+                whatsapp: '5516997730366'
+            },
+            { 
+                id: 'treze', 
+                name: 'Unidade 13 de Maio', 
+                address: 'Av. Treze de Maio, 340', 
+                lat: -21.1788, 
+                lng: -47.7955, 
+                link: 'https://pedido.takeat.app/falaguastadelivery13demaio',
+                whatsapp: '5516982184609'
+            },
+            { 
+                id: 'ipiranga', 
+                name: 'Unidade Ipiranga', 
+                address: 'Av. Dom Pedro I, 1470', 
+                lat: -21.1652, 
+                lng: -47.8205, 
+                link: 'https://pedido.takeat.app/falaguastadeliveryipiranga',
+                whatsapp: '5516991906623'
+            }
+        ];
+
+        const RP_VIEWBOX = "-48.03,-21.06,-47.69,-21.44"; 
+
+        const input = document.getElementById('address-input');
+        const suggestionsList = document.getElementById('suggestions-list');
+        const statusMsg = document.getElementById('status-msg');
+        const resultsArea = document.getElementById('results-area');
+        const unitsList = document.getElementById('units-list');
+        const selectedAddressBox = document.getElementById('selected-address-box');
+        const confirmedAddressText = document.getElementById('confirmed-address-text');
+        const debugLocation = document.getElementById('debug-location');
+        const clearBtn = document.getElementById('clear-btn');
+
+        let debounceTimer;
+        let lastFetchedData = [];
+
+        input.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const query = this.value.trim();
+            
+            clearBtn.classList.toggle('hidden', query.length === 0);
+
+            const cepRegex = /^[0-9]{5}-?[0-9]{3}$/;
+            const simpleCepRegex = /^[0-9]{8}$/;
+
+            if (query.length < 3) {
+                suggestionsList.classList.add('hidden');
+                return;
+            }
+
+            suggestionsList.innerHTML = `
+                <li class="px-6 py-8 text-center">
+                    <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--brand-yellow)] mb-2"></div>
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider font-display">Procurando...</p>
+                </li>`;
+            suggestionsList.classList.remove('hidden');
+
+            if (cepRegex.test(query) || simpleCepRegex.test(query)) {
+                debounceTimer = setTimeout(() => fetchByCep(query), 400);
+            } else {
+                debounceTimer = setTimeout(() => fetchSuggestions(query), 600);
+            }
+        });
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (lastFetchedData.length > 0) {
+                    if (lastFetchedData[0].isCepResult) {
+                        selectCepAddress(lastFetchedData[0]);
+                    } else {
+                        selectAddress(lastFetchedData[0]);
+                    }
+                } else {
+                    const query = input.value.trim();
+                    const cleanQuery = query.replace(/\D/g,'');
+                    if(cleanQuery.length === 8) fetchByCep(cleanQuery, true);
+                    else fetchSuggestions(query, true);
+                }
+            }
+        });
+
+        async function fetchByCep(cep, autoSelect = false) {
+            const cleanCep = cep.replace(/\D/g, '');
+            const url = `https://brasilapi.com.br/api/cep/v2/${cleanCep}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('CEP não encontrado');
+                const data = await response.json();
+                
+                const cepItem = {
+                    display_name: `${data.street}, ${data.neighborhood}, ${data.city} - ${data.state}`,
+                    street: data.street,
+                    neighborhood: data.neighborhood, 
+                    city: data.city,
+                    state: data.state,
+                    isCepResult: true 
+                };
+
+                lastFetchedData = [cepItem];
+                renderSuggestions([cepItem], true);
+                if (autoSelect) selectCepAddress(cepItem);
+
+            } catch (error) {
+                fetchSuggestions(cep); 
+            }
+        }
+
+        async function fetchSuggestions(query, autoSelect = false) {
+            let cleanQuery = query.replace(/nº|numero|número|apto|ap|casa|bloco/gi, " ");
+            if (!cleanQuery.toLowerCase().includes("ribeirão") && !cleanQuery.toLowerCase().includes("ribeirao")) {
+                cleanQuery += ", Ribeirão Preto";
+            }
+            
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&countrycodes=br&viewbox=${RP_VIEWBOX}&bounded=1&limit=4&addressdetails=1`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                lastFetchedData = data;
+                
+                if (data.length === 0) {
+                    suggestionsList.innerHTML = `
+                        <li class="px-6 py-6 text-center text-gray-500">
+                            <i class="fas fa-map-signs text-2xl mb-2 text-gray-700"></i>
+                            <p class="text-sm font-medium text-gray-400">Local não encontrado na região.</p>
+                            <p class="text-xs text-gray-600 mt-1">Tente buscar apenas por <b>Rua e Bairro</b></p>
+                        </li>`;
+                    return;
+                }
+
+                if (autoSelect) { selectAddress(data[0]); return; }
+                renderSuggestions(data);
+
+            } catch (error) {
+                console.error(error);
+                suggestionsList.classList.add('hidden');
+            }
+        }
+
+        function renderSuggestions(data, isCep = false) {
+            suggestionsList.innerHTML = '';
+            data.forEach(item => {
+                const li = document.createElement('li');
+                
+                let mainText = '';
+                let subText = '';
+
+                if (isCep) {
+                    mainText = item.street;
+                    subText = `${item.neighborhood} - CEP Encontrado`;
+                } else {
+                    const address = item.address || {};
+                    mainText = address.road || address.pedestrian || item.display_name.split(',')[0];
+                    if (address.house_number) mainText += `, ${address.house_number}`;
+                    
+                    const details = [];
+                    if (address.suburb) details.push(address.suburb);
+                    if (address.city) details.push(address.city);
+                    subText = details.join(' • ');
+                }
+
+                li.className = "px-4 py-3 hover:bg-[#222] cursor-pointer transition flex items-center gap-3 group border-b border-gray-800 last:border-0";
+                li.innerHTML = `
+                    <div class="h-8 w-8 rounded-full bg-[#333] flex items-center justify-center text-gray-400 group-hover:bg-[var(--brand-yellow)] group-hover:text-black transition-colors shrink-0">
+                        <i class="fas ${isCep ? 'fa-check' : 'fa-map-marker-alt'}"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-bold text-gray-200 text-sm truncate">${mainText}</p>
+                        <p class="text-xs text-gray-500 truncate group-hover:text-gray-400">${subText}</p>
+                    </div>
+                `;
+                
+                li.onclick = () => isCep ? selectCepAddress(item) : selectAddress(item);
+                suggestionsList.appendChild(li);
+            });
+            suggestionsList.classList.remove('hidden');
+        }
+
+        async function getCoordinatesWithFallback(item) {
+            const isValidCity = (d) => {
+                const c = (d.address?.city || d.address?.town || d.address?.municipality || "").toLowerCase();
+                return c.includes("ribeir") || c.includes("bonfim") || c.includes("cravinhos") || c.includes("serrana");
+            };
+            
+            const base = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&viewbox=${RP_VIEWBOX}&bounded=1&limit=1&addressdetails=1&q=`;
+            
+            const queries = [
+                `${item.street}, ${item.neighborhood}, ${item.city}`,
+                `${item.street}, ${item.city}`,
+                item.neighborhood ? `${item.neighborhood}, ${item.city}` : null,
+                item.city
+            ];
+
+            for (let i = 0; i < queries.length; i++) {
+                if (!queries[i]) continue;
+                try {
+                    const res = await fetch(base + encodeURIComponent(queries[i]));
+                    const data = await res.json();
+                    if (data.length > 0 && (i === 3 || isValidCity(data[0]))) { 
+                        return { ...data[0], strategyLevel: i };
+                    }
+                } catch(e){}
+            }
+            return null;
+        }
+
+        async function selectCepAddress(item) {
+            input.value = item.display_name;
+            suggestionsList.classList.add('hidden');
+            
+            statusMsg.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>Afinando localização...';
+            statusMsg.classList.remove('hidden');
+            resultsArea.classList.add('hidden');
+
+            const result = await getCoordinatesWithFallback(item);
+            
+            if (result) {
+                renderAddressConfirmation(item.display_name, result.address?.city, result.strategyLevel);
+                renderUnits(parseFloat(result.lat), parseFloat(result.lon));
+            } else {
+                showError("Endereço difícil de localizar. Tente buscar pelo nome do bairro.");
+            }
+        }
+
+        function selectAddress(item) {
+            input.value = item.display_name.split(',')[0];
+            suggestionsList.classList.add('hidden');
+            
+            const city = item.address?.city || item.address?.town || item.address?.municipality || "Desconhecida";
+            renderAddressConfirmation(item.display_name.split(',')[0], city, 0);
+            renderUnits(parseFloat(item.lat), parseFloat(item.lon));
+        }
+
+        function renderAddressConfirmation(text, city, accuracyLevel) {
+            let note = "Localização Exata";
+            if (accuracyLevel >= 2) note = "Referência Aproximada (Bairro/Centro)";
+            
+            confirmedAddressText.textContent = text;
+            debugLocation.textContent = `${note} • Cidade: ${city || 'Detectada'}`;
+            selectedAddressBox.classList.remove('hidden');
+        }
+
+        function renderUnits(userLat, userLng) {
+            const sorted = units.map(unit => {
+                const d = getDistance(userLat, userLng, unit.lat, unit.lng);
+                return { ...unit, distance: d };
+            }).sort((a, b) => a.distance - b.distance);
+
+            if (sorted[0].distance > 80) {
+                showError(`<b>Atenção:</b> Endereço muito longe (${Math.round(sorted[0].distance)}km).<br>Tente digitar apenas o <b>Bairro</b>.`);
+                return;
+            }
+
+            unitsList.innerHTML = '';
+            statusMsg.classList.add('hidden');
+
+            sorted.forEach((unit, index) => {
+                const isClosest = index === 0;
+                const distDisplay = unit.distance < 1 
+                    ? `${Math.round(unit.distance * 1000)}m` 
+                    : `${unit.distance.toFixed(1)}km`;
+
+                const card = document.createElement('div');
+                card.className = `card-unit p-5 relative ${isClosest ? 'highlight-closest' : ''}`;
+                
+                const badge = isClosest 
+                    ? `<div class="badge-closest"><i class="fas fa-fire mr-1"></i> Mais Rápida</div>` 
+                    : '';
+
+                // Lógica para os botões: 
+                // Se tem WhatsApp, divide espaço. Se não, o cardápio ocupa mais.
+                let buttonsHtml = '';
+                
+                if (unit.whatsapp) {
+                    buttonsHtml = `
+                        <div class="flex gap-2 w-full mt-4">
+                            <a href="${unit.link}" target="_blank" class="flex-grow btn-yellow font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg group">
+                                <i class="fas fa-utensils text-lg"></i>
+                                <span class="tracking-wide text-xs md:text-sm font-display">CARDÁPIO</span>
+                            </a>
+                            <a href="https://wa.me/${unit.whatsapp}" target="_blank" class="w-14 btn-whatsapp font-bold rounded-xl flex items-center justify-center shadow-lg">
+                                <i class="fab fa-whatsapp text-2xl"></i>
+                            </a>
+                            <a href="https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${unit.lat},${unit.lng}" target="_blank" class="w-14 btn-map rounded-xl flex items-center justify-center">
+                                <i class="fas fa-location-arrow text-lg"></i>
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    buttonsHtml = `
+                        <div class="flex gap-2 w-full mt-4">
+                            <a href="${unit.link}" target="_blank" class="flex-grow btn-yellow font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg group">
+                                <i class="fas fa-utensils text-lg"></i>
+                                <span class="tracking-wide text-xs md:text-sm font-display">VER CARDÁPIO</span>
+                            </a>
+                            <a href="https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${unit.lat},${unit.lng}" target="_blank" class="w-14 btn-map rounded-xl flex items-center justify-center">
+                                <i class="fas fa-location-arrow text-lg"></i>
+                            </a>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    ${badge}
+                    <div class="flex justify-between items-start">
+                        <div class="pr-2">
+                            <h3 class="text-xl font-bold text-[var(--brand-yellow)] leading-tight tracking-tight">${unit.name}</h3>
+                            <p class="text-gray-400 text-xs mt-1 font-medium"><i class="fas fa-map-pin mr-1 opacity-50"></i> ${unit.address}</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center bg-[#2a2a2a] rounded-lg p-2 min-w-[70px] border border-[#333]">
+                            <span class="block font-black text-xl text-white leading-none font-display">${distDisplay}</span>
+                            <span class="text-[8px] text-gray-500 uppercase font-bold mt-1 font-display text-center leading-tight">Raio<br>Linear</span>
+                        </div>
+                    </div>
+                    ${buttonsHtml}
+                `;
+                unitsList.appendChild(card);
+            });
+
+            resultsArea.classList.remove('hidden');
+            setTimeout(() => resultsArea.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        }
+
+        function showError(msg) {
+            statusMsg.innerHTML = `<i class="fas fa-exclamation-circle text-[var(--brand-yellow)] text-xl mb-2 block"></i>${msg}`;
+            statusMsg.classList.remove('hidden');
+            resultsArea.classList.add('hidden');
+        }
+
+        function clearSearch() {
+            input.value = '';
+            input.focus();
+            clearBtn.classList.add('hidden');
+            suggestionsList.classList.add('hidden');
+            selectedAddressBox.classList.add('hidden');
+            resultsArea.classList.add('hidden');
+            statusMsg.classList.add('hidden');
+        }
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * (Math.PI/180);
+            const dLon = (lon2 - lon1) * (Math.PI/180);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * (Math.PI/180)) * Math.cos(lat2 * (Math.PI/180)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+            return R * c;
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!input.contains(e.target) && !suggestionsList.contains(e.target)) {
+                suggestionsList.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
