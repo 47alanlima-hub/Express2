@@ -285,19 +285,21 @@
         // --- DADOS UNIDADES ---
         const units = [
             { 
-                id: 'vargas', 
-                name: 'Unidade Vargas', 
-                address: 'Av. Presidente Vargas', 
-                lat: -21.1963, 
-                lng: -47.8123, 
+                id: 'vargas',
+                name: 'Unidade Vargas',
+                address: 'R. Adolfo Serra, 1640',
+                cidade: 'Ribeirão Preto - SP',
+                lat: -21.20265,
+                lng: -47.81533,
                 link: 'https://pedido.takeat.app/falaguastaexpressvargas',
                 whatsapp: '5516997051553'
             },
             { 
                 id: 'botanico', 
                 name: 'Unidade Botânico', 
-                address: 'Av. Maurílio Biagi, 1450', 
-                lat: -21.1982, 
+                address: 'Av. Maurílio Biagi, 1450',
+                cidade: 'Ribeirão Preto - SP',
+                lat: -21.1982,
                 lng: -47.8001, 
                 link: 'https://pedido.takeat.app/falaguastadeliverybotanico',
                 whatsapp: '5516981636074'
@@ -305,8 +307,9 @@
             { 
                 id: 'bonfim', 
                 name: 'Unidade Bonfim', 
-                address: 'Via Dr. Luiz Carlos Bianchi, 1745', 
-                lat: -21.2355, 
+                address: 'Via Dr. Luiz Carlos Bianchi, 1745',
+                cidade: 'Bonfim Paulista, Ribeirão Preto - SP',
+                lat: -21.2355,
                 lng: -47.8251, 
                 link: 'https://pedido.takeat.app/falaguastadeliverybonfim',
                 whatsapp: '5516997730366'
@@ -314,8 +317,9 @@
             { 
                 id: 'treze', 
                 name: 'Unidade 13 de Maio', 
-                address: 'Av. Treze de Maio, 340', 
-                lat: -21.1788, 
+                address: 'Av. Treze de Maio, 340',
+                cidade: 'Ribeirão Preto - SP',
+                lat: -21.1788,
                 lng: -47.7955, 
                 link: 'https://pedido.takeat.app/falaguastadelivery13demaio',
                 whatsapp: '5516982184609'
@@ -323,8 +327,9 @@
             { 
                 id: 'ipiranga', 
                 name: 'Unidade Ipiranga', 
-                address: 'Av. Dom Pedro I, 1470', 
-                lat: -21.1652, 
+                address: 'Av. Dom Pedro I, 1470',
+                cidade: 'Ribeirão Preto - SP',
+                lat: -21.1652,
                 lng: -47.8205, 
                 link: 'https://pedido.takeat.app/falaguastadeliveryipiranga',
                 whatsapp: '5516991906623'
@@ -332,27 +337,30 @@
             {
                 id: 'sertaozinho',
                 name: 'Unidade Sertãozinho',
-                address: 'R. Barão do Rio Branco, 827 - Sertãozinho/SP',
-                lat: -21.1375,
-                lng: -47.9922,
+                address: 'R. Barão do Rio Branco, 827',
+                cidade: 'Sertãozinho - SP',
+                lat: -21.13764,
+                lng: -47.99059,
                 link: 'https://pedido.takeat.app/falaguastasertaozinho',
                 whatsapp: '5516999622148'
             },
             {
                 id: 'serrana',
                 name: 'Unidade Serrana',
-                address: 'R. Barão do Rio Branco, 355 - Serrana/SP',
-                lat: -21.2107,
-                lng: -47.5946,
+                address: 'R. Barão do Rio Branco, 355',
+                cidade: 'Serrana - SP',
+                lat: -21.21280,
+                lng: -47.59904,
                 link: 'https://pedido.takeat.app/falaguastaserrana',
                 whatsapp: '5516991615944'
             },
             {
                 id: 'cravinhos',
                 name: 'Unidade Cravinhos',
-                address: 'Rua 15 de Novembro, 288 - Cravinhos/SP',
-                lat: -21.3403,
-                lng: -47.7295,
+                address: 'Rua 15 de Novembro, 288',
+                cidade: 'Cravinhos - SP',
+                lat: -21.33885,
+                lng: -47.73032,
                 link: 'https://pedido.takeat.app/falaguastacravinhos'
             }
         ];
@@ -362,6 +370,121 @@
 
         // Cidades atendidas (usado para validar resultados de geocodificação)
         const CIDADES_ATENDIDAS = ["ribeir", "bonfim", "cravinhos", "serrana", "sertãozinho", "sertaozinho"];
+
+        /* ===================================================================
+           ÍNDICE LOCAL DE RUAS (ruas.json)
+           Todas as ruas das 4 cidades atendidas, extraídas do OpenStreetMap.
+           A busca roda no navegador: sem API, sem limite, sem bloqueio.
+           A busca online continua existindo apenas como reserva.
+           =================================================================== */
+
+        let indiceRuas = null;
+        let promessaIndice = null;
+
+        // Marcas de acento (U+0300 a U+036F) declaradas em ASCII puro,
+        // para o codigo nao depender da codificacao do arquivo.
+        const RE_ACENTOS = new RegExp(
+            '[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036F) + ']', 'g');
+
+        // Remove acentos e pontuacao
+        function normalizar(texto) {
+            return (texto || '')
+                .normalize('NFD').replace(RE_ACENTOS, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        const PREFIXO_VIA = /^(r|rua|av|avenida|al|alameda|tv|travessa|pc|praca|rod|rodovia|estr|estrada|via|largo|marginal|viela|beco)\s+/;
+
+        function carregarIndice() {
+            if (promessaIndice) return promessaIndice;
+            promessaIndice = fetch('ruas.json')
+                .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(dados => {
+                    indiceRuas = dados.ruas.map(([nome, ci, lat, lng, aprox]) => {
+                        const norm = normalizar(nome);
+                        return {
+                            nome, lat, lng, aprox,
+                            cidade: dados.cidades[ci],
+                            norm,
+                            nucleo: norm.replace(PREFIXO_VIA, '')
+                        };
+                    });
+                    return indiceRuas;
+                })
+                .catch(erro => {
+                    console.warn('Índice local indisponível, usando busca online:', erro);
+                    indiceRuas = [];
+                    return indiceRuas;
+                });
+            return promessaIndice;
+        }
+
+        function buscarNoIndice(query) {
+            if (!indiceRuas || indiceRuas.length === 0) return [];
+
+            // "Rua X, Jardim Y" -> rua = "Rua X"; o resto vira filtro de cidade (se houver)
+            const partes = query.split(',');
+            let textoRua = normalizar(partes[0]);
+            const resto = normalizar(partes.slice(1).join(' '));
+            const tudo = normalizar(query);
+
+            // Número da casa: no fim da rua ("Rua X 288") ou logo após a vírgula
+            let numero = null;
+            const comNumero = textoRua.match(/^(.*?)\s+(\d{1,6})$/);
+            if (comNumero) { textoRua = comNumero[1].trim(); numero = comNumero[2]; }
+            else {
+                // Aceita "1190" e também "1190 - Jardim Bela Vista"
+                const n = (partes[1] || '').trim().match(/^(\d{1,6})\b/);
+                if (n) numero = n[1];
+            }
+
+            if (textoRua.length < 3) return [];
+
+            // Se o usuário citou uma cidade atendida, restringe a ela
+            let cidadeFiltro = null;
+            for (const c of ['ribeirao preto', 'sertaozinho', 'serrana', 'cravinhos']) {
+                if (resto.includes(c) || tudo.includes(c)) { cidadeFiltro = c; break; }
+            }
+
+            const nucleoBusca = textoRua.replace(PREFIXO_VIA, '');
+            const termos = nucleoBusca.split(' ').filter(Boolean);
+            if (termos.length === 0) return [];
+
+            const achados = [];
+            for (const rua of indiceRuas) {
+                if (cidadeFiltro && normalizar(rua.cidade) !== cidadeFiltro) continue;
+                if (!termos.every(t => rua.norm.includes(t))) continue;
+
+                let pontos = 0;
+                if (rua.nucleo === nucleoBusca) pontos += 100;
+                else if (rua.nucleo.startsWith(nucleoBusca)) pontos += 60;
+                else if (rua.nucleo.includes(nucleoBusca)) pontos += 35;
+                else pontos += 15;
+
+                // Entre dois nomes que casam, o mais curto costuma ser o pretendido
+                pontos -= Math.min(rua.nucleo.length / 12, 5);
+                if (rua.aprox) pontos -= 3;
+
+                achados.push({ rua, pontos });
+            }
+
+            achados.sort((a, b) => b.pontos - a.pontos);
+            return achados.slice(0, 6).map(a => ({ ...a.rua, numero, isLocal: true }));
+        }
+
+        function selectLocalAddress(item) {
+            const rotulo = item.numero ? `${item.nome}, ${item.numero}` : item.nome;
+            input.value = rotulo;
+            suggestionsList.classList.add('hidden');
+            statusMsg.classList.add('hidden');
+
+            // Ruas muito longas: o ponto guardado é o centro da via, não o número exato
+            renderAddressConfirmation(`${rotulo} - ${item.cidade}`, item.cidade, item.aprox ? 2 : 0);
+            renderUnits(item.lat, item.lng);
+        }
 
         const input = document.getElementById('address-input');
         const suggestionsList = document.getElementById('suggestions-list');
@@ -401,24 +524,39 @@
             if (cepRegex.test(query) || simpleCepRegex.test(query)) {
                 debounceTimer = setTimeout(() => fetchByCep(query), 400);
             } else {
-                debounceTimer = setTimeout(() => fetchSuggestions(query), 600);
+                // Índice local responde na hora; só espera mais se precisar da reserva online
+                debounceTimer = setTimeout(() => buscarEndereco(query), 180);
             }
         });
+
+        // Busca principal: tenta o índice local e, se não achar, cai para o online
+        async function buscarEndereco(query, autoSelect = false) {
+            await carregarIndice();
+
+            const locais = buscarNoIndice(query);
+            if (locais.length > 0) {
+                lastFetchedData = locais;
+                if (autoSelect) { selectLocalAddress(locais[0]); return; }
+                renderSuggestions(locais, 'local');
+                return;
+            }
+
+            await fetchSuggestions(query, autoSelect);
+        }
 
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 if (lastFetchedData.length > 0) {
-                    if (lastFetchedData[0].isCepResult) {
-                        selectCepAddress(lastFetchedData[0]);
-                    } else {
-                        selectAddress(lastFetchedData[0]);
-                    }
+                    const primeiro = lastFetchedData[0];
+                    if (primeiro.isCepResult)   selectCepAddress(primeiro);
+                    else if (primeiro.isLocal)  selectLocalAddress(primeiro);
+                    else                        selectAddress(primeiro);
                 } else {
                     const query = input.value.trim();
                     const cleanQuery = query.replace(/\D/g,'');
                     if(cleanQuery.length === 8) fetchByCep(cleanQuery, true);
-                    else fetchSuggestions(query, true);
+                    else buscarEndereco(query, true);
                 }
             }
         });
@@ -432,17 +570,23 @@
                 if (!response.ok) throw new Error('CEP não encontrado');
                 const data = await response.json();
                 
+                // A BrasilAPI v2 costuma trazer as coordenadas prontas
+                const coords = data.location?.coordinates;
+
                 const cepItem = {
-                    display_name: `${data.street}, ${data.neighborhood}, ${data.city} - ${data.state}`,
+                    display_name: [data.street, data.neighborhood, `${data.city} - ${data.state}`]
+                                  .filter(Boolean).join(', '),
                     street: data.street,
-                    neighborhood: data.neighborhood, 
+                    neighborhood: data.neighborhood,
                     city: data.city,
                     state: data.state,
-                    isCepResult: true 
+                    lat: coords?.latitude ? parseFloat(coords.latitude) : null,
+                    lng: coords?.longitude ? parseFloat(coords.longitude) : null,
+                    isCepResult: true
                 };
 
                 lastFetchedData = [cepItem];
-                renderSuggestions([cepItem], true);
+                renderSuggestions([cepItem], 'cep');
                 if (autoSelect) selectCepAddress(cepItem);
 
             } catch (error) {
@@ -450,30 +594,81 @@
             }
         }
 
-        async function fetchSuggestions(query, autoSelect = false) {
-            let cleanQuery = query.replace(/nº|numero|número|apto|ap|casa|bloco/gi, " ");
+        // Nome da cidade: cidades pequenas (Cravinhos, Serrana, Sertãozinho) voltam
+        // como "town"/"village", não como "city".
+        function getCityName(address = {}) {
+            return address.city || address.town || address.municipality ||
+                   address.village || address.county || '';
+        }
 
-            // Só assume Ribeirão Preto se o usuário não citou nenhuma cidade atendida
-            const q = cleanQuery.toLowerCase();
-            const citouCidade = ["ribeirão", "ribeirao", "sertãozinho", "sertaozinho",
-                                 "serrana", "cravinhos", "bonfim"].some(c => q.includes(c));
-            if (!citouCidade) {
-                cleanQuery += ", Ribeirão Preto";
-            }
-            
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&countrycodes=br&viewbox=${RP_VIEWBOX}&bounded=1&limit=4&addressdetails=1`;
-            
+        function isCidadeAtendida(address) {
+            const c = getCityName(address).toLowerCase();
+            return CIDADES_ATENDIDAS.some(cidade => c.includes(cidade));
+        }
+
+        async function nominatimSearch(q, limit = 8) {
+            const url = `https://nominatim.openstreetmap.org/search?format=json` +
+                        `&q=${encodeURIComponent(q)}&countrycodes=br` +
+                        `&viewbox=${RP_VIEWBOX}&bounded=1&limit=${limit}` +
+                        `&addressdetails=1&dedupe=1&accept-language=pt-BR`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Busca indisponível');
+            return response.json();
+        }
+
+        // Ordena: cidades atendidas primeiro, depois endereços mais específicos
+        // (rua com número > rua > bairro), preservando o ranking do Nominatim.
+        function rankResults(data) {
+            const score = (item) => {
+                const a = item.address || {};
+                let s = 0;
+                if (isCidadeAtendida(a)) s += 100;
+                if (a.house_number) s += 10;
+                if (a.road || a.pedestrian) s += 5;
+                return s;
+            };
+            return data
+                .map((item, i) => ({ item, i, s: score(item) }))
+                .sort((x, y) => y.s - x.s || x.i - y.i)
+                .map(x => x.item);
+        }
+
+        // Evita que uma resposta lenta de uma busca antiga sobrescreva a atual
+        let searchToken = 0;
+
+        async function fetchSuggestions(query, autoSelect = false) {
+            const meuToken = ++searchToken;
+            const cleanQuery = query
+                .replace(/nº|numero|número|apto|ap|casa|bloco/gi, " ")
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            // Sem número da casa: no OSM brasileiro muitos números não existem,
+            // e a busca com número volta vazia mesmo com a rua cadastrada.
+            const semNumero = cleanQuery.replace(/[,\s]+\d+\s*$/, '').trim();
+
+            // A viewbox já limita à região atendida, então NÃO forçamos a cidade:
+            // é isso que permite achar ruas em Cravinhos, Serrana e Sertãozinho.
+            const tentativas = [cleanQuery];
+            if (semNumero && semNumero !== cleanQuery) tentativas.push(semNumero);
+
             try {
-                const response = await fetch(url);
-                const data = await response.json();
+                let data = [];
+                for (const tentativa of tentativas) {
+                    data = await nominatimSearch(tentativa);
+                    if (meuToken !== searchToken) return; // usuário já digitou outra coisa
+                    if (data.length > 0) break;
+                }
+
+                data = rankResults(data).slice(0, 6);
                 lastFetchedData = data;
-                
+
                 if (data.length === 0) {
                     suggestionsList.innerHTML = `
                         <li class="px-6 py-6 text-center text-gray-500">
                             <i class="fas fa-map-signs text-2xl mb-2 text-gray-700"></i>
                             <p class="text-sm font-medium text-gray-400">Local não encontrado na região.</p>
-                            <p class="text-xs text-gray-600 mt-1">Tente buscar apenas por <b>Rua e Bairro</b></p>
+                            <p class="text-xs text-gray-600 mt-1">Tente <b>Rua + Bairro</b> ou <b>Rua + Cidade</b>, ou busque pelo <b>CEP</b></p>
                         </li>`;
                     return;
                 }
@@ -483,11 +678,20 @@
 
             } catch (error) {
                 console.error(error);
-                suggestionsList.classList.add('hidden');
+                if (meuToken !== searchToken) return;
+                suggestionsList.innerHTML = `
+                    <li class="px-6 py-6 text-center text-gray-500">
+                        <i class="fas fa-triangle-exclamation text-2xl mb-2 text-gray-700"></i>
+                        <p class="text-sm font-medium text-gray-400">Busca temporariamente indisponível.</p>
+                        <p class="text-xs text-gray-600 mt-1">Tente pelo <b>CEP</b>.</p>
+                    </li>`;
             }
         }
 
-        function renderSuggestions(data, isCep = false) {
+        // tipo: 'osm' (busca online) | 'cep' | 'local' (índice de ruas embutido)
+        function renderSuggestions(data, tipo = 'osm') {
+            const isCep = tipo === 'cep' || tipo === true;   // true: compatibilidade
+            const isLocal = tipo === 'local';
             suggestionsList.innerHTML = '';
             data.forEach(item => {
                 const li = document.createElement('li');
@@ -498,14 +702,19 @@
                 if (isCep) {
                     mainText = item.street;
                     subText = `${item.neighborhood} - CEP Encontrado`;
+                } else if (isLocal) {
+                    mainText = item.numero ? `${item.nome}, ${item.numero}` : item.nome;
+                    subText = item.aprox ? `${item.cidade} • via extensa` : item.cidade;
                 } else {
                     const address = item.address || {};
                     mainText = address.road || address.pedestrian || item.display_name.split(',')[0];
                     if (address.house_number) mainText += `, ${address.house_number}`;
                     
                     const details = [];
-                    if (address.suburb) details.push(address.suburb);
-                    if (address.city) details.push(address.city);
+                    const bairro = address.suburb || address.neighbourhood || address.quarter;
+                    if (bairro) details.push(bairro);
+                    const cidade = getCityName(address);
+                    if (cidade) details.push(cidade);
                     subText = details.join(' • ');
                 }
 
@@ -520,33 +729,31 @@
                     </div>
                 `;
                 
-                li.onclick = () => isCep ? selectCepAddress(item) : selectAddress(item);
+                li.onclick = () => {
+                    if (isCep) selectCepAddress(item);
+                    else if (isLocal) selectLocalAddress(item);
+                    else selectAddress(item);
+                };
                 suggestionsList.appendChild(li);
             });
             suggestionsList.classList.remove('hidden');
         }
 
         async function getCoordinatesWithFallback(item) {
-            const isValidCity = (d) => {
-                const c = (d.address?.city || d.address?.town || d.address?.municipality || "").toLowerCase();
-                return CIDADES_ATENDIDAS.some(cidade => c.includes(cidade));
-            };
-            
-            const base = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&viewbox=${RP_VIEWBOX}&bounded=1&limit=1&addressdetails=1&q=`;
-            
+            // Monta só as consultas cujas partes existem (CEP geral de cidade não traz rua)
+            const partes = (...p) => p.filter(Boolean).join(', ');
             const queries = [
-                `${item.street}, ${item.neighborhood}, ${item.city}`,
-                `${item.street}, ${item.city}`,
-                item.neighborhood ? `${item.neighborhood}, ${item.city}` : null,
+                item.street ? partes(item.street, item.neighborhood, item.city) : null,
+                item.street ? partes(item.street, item.city) : null,
+                item.neighborhood ? partes(item.neighborhood, item.city) : null,
                 item.city
             ];
 
             for (let i = 0; i < queries.length; i++) {
                 if (!queries[i]) continue;
                 try {
-                    const res = await fetch(base + encodeURIComponent(queries[i]));
-                    const data = await res.json();
-                    if (data.length > 0 && (i === 3 || isValidCity(data[0]))) { 
+                    const data = await nominatimSearch(queries[i], 1);
+                    if (data.length > 0 && (i === 3 || isCidadeAtendida(data[0].address))) {
                         return { ...data[0], strategyLevel: i };
                     }
                 } catch(e){}
@@ -561,8 +768,15 @@
             statusMsg.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>Afinando localização...';
             statusMsg.classList.remove('hidden');
 
+            // Coordenadas vindas do próprio CEP: mais precisas e sem depender do OSM
+            if (item.lat && item.lng) {
+                renderAddressConfirmation(item.display_name, item.city, 0);
+                renderUnits(item.lat, item.lng);
+                return;
+            }
+
             const result = await getCoordinatesWithFallback(item);
-            
+
             if (result) {
                 renderAddressConfirmation(item.display_name, result.address?.city, result.strategyLevel);
                 renderUnits(parseFloat(result.lat), parseFloat(result.lon));
@@ -575,7 +789,7 @@
             input.value = item.display_name.split(',')[0];
             suggestionsList.classList.add('hidden');
             
-            const city = item.address?.city || item.address?.town || item.address?.municipality || "Desconhecida";
+            const city = getCityName(item.address) || "Desconhecida";
             renderAddressConfirmation(item.display_name.split(',')[0], city, 0);
             renderUnits(parseFloat(item.lat), parseFloat(item.lon));
         }
@@ -638,9 +852,16 @@
                     `;
                 }
 
-                const mapUrl = hasLocation 
-                    ? `https://www.google.com/maps/dir/?api=1&origin=${unit.lat},${unit.lng}&destination=${userLat},${userLng}`
-                    : `https://www.google.com/maps/search/?api=1&query=${unit.lat},${unit.lng}`;
+                // Usa o endereço escrito, não as coordenadas: o Google resolve o número
+                // exato da loja, enquanto nossas coordenadas são o centro da rua.
+                const enderecoLoja = encodeURIComponent(
+                    [unit.address, unit.cidade].filter(Boolean).join(', ')
+                );
+
+                // Rota do cliente ATÉ a loja (origem = cliente, destino = loja)
+                const mapUrl = hasLocation
+                    ? `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${enderecoLoja}`
+                    : `https://www.google.com/maps/search/?api=1&query=${enderecoLoja}`;
 
                 let buttonsHtml = '';
                 if (unit.whatsapp) {
@@ -678,6 +899,7 @@
                         <div class="pr-2">
                             <h3 class="text-xl font-bold text-[var(--brand-yellow)] leading-tight tracking-tight">${unit.name}</h3>
                             <p class="text-gray-400 text-xs mt-1 font-medium"><i class="fas fa-map-pin mr-1 opacity-50"></i> ${unit.address}</p>
+                            ${unit.cidade ? `<p class="text-gray-500 text-[11px] mt-0.5 font-medium pl-4">${unit.cidade}</p>` : ''}
                         </div>
                         ${distanceHtml}
                     </div>
@@ -725,6 +947,9 @@
 
         // Carregar unidades imediatamente no carregamento da página
         renderUnits();
+
+        // Baixa o índice de ruas em segundo plano, para a 1ª busca já ser instantânea
+        carregarIndice();
     </script>
 </body>
 </html>
