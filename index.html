@@ -328,10 +328,40 @@
                 lng: -47.8205, 
                 link: 'https://pedido.takeat.app/falaguastadeliveryipiranga',
                 whatsapp: '5516991906623'
+            },
+            {
+                id: 'sertaozinho',
+                name: 'Unidade Sertãozinho',
+                address: 'R. Barão do Rio Branco, 827 - Sertãozinho/SP',
+                lat: -21.1375,
+                lng: -47.9922,
+                link: 'https://pedido.takeat.app/falaguastasertaozinho',
+                whatsapp: '5516999622148'
+            },
+            {
+                id: 'serrana',
+                name: 'Unidade Serrana',
+                address: 'R. Barão do Rio Branco, 355 - Serrana/SP',
+                lat: -21.2107,
+                lng: -47.5946,
+                link: 'https://pedido.takeat.app/falaguastaserrana',
+                whatsapp: '5516991615944'
+            },
+            {
+                id: 'cravinhos',
+                name: 'Unidade Cravinhos',
+                address: 'Rua 15 de Novembro, 288 - Cravinhos/SP',
+                lat: -21.3403,
+                lng: -47.7295,
+                link: 'https://pedido.takeat.app/falaguastacravinhos'
             }
         ];
 
-        const RP_VIEWBOX = "-48.03,-21.06,-47.69,-21.44"; 
+        // Área de cobertura: Ribeirão Preto + Sertãozinho, Serrana, Cravinhos e Bonfim Paulista
+        const RP_VIEWBOX = "-48.12,-21.02,-47.50,-21.48";
+
+        // Cidades atendidas (usado para validar resultados de geocodificação)
+        const CIDADES_ATENDIDAS = ["ribeir", "bonfim", "cravinhos", "serrana", "sertãozinho", "sertaozinho"];
 
         const input = document.getElementById('address-input');
         const suggestionsList = document.getElementById('suggestions-list');
@@ -422,7 +452,12 @@
 
         async function fetchSuggestions(query, autoSelect = false) {
             let cleanQuery = query.replace(/nº|numero|número|apto|ap|casa|bloco/gi, " ");
-            if (!cleanQuery.toLowerCase().includes("ribeirão") && !cleanQuery.toLowerCase().includes("ribeirao")) {
+
+            // Só assume Ribeirão Preto se o usuário não citou nenhuma cidade atendida
+            const q = cleanQuery.toLowerCase();
+            const citouCidade = ["ribeirão", "ribeirao", "sertãozinho", "sertaozinho",
+                                 "serrana", "cravinhos", "bonfim"].some(c => q.includes(c));
+            if (!citouCidade) {
                 cleanQuery += ", Ribeirão Preto";
             }
             
@@ -494,7 +529,7 @@
         async function getCoordinatesWithFallback(item) {
             const isValidCity = (d) => {
                 const c = (d.address?.city || d.address?.town || d.address?.municipality || "").toLowerCase();
-                return c.includes("ribeir") || c.includes("bonfim") || c.includes("cravinhos") || c.includes("serrana");
+                return CIDADES_ATENDIDAS.some(cidade => c.includes(cidade));
             };
             
             const base = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&viewbox=${RP_VIEWBOX}&bounded=1&limit=1&addressdetails=1&q=`;
