@@ -398,18 +398,27 @@
 
         const PREFIXO_VIA = /^(r|rua|av|avenida|al|alameda|tv|travessa|pc|praca|rod|rodovia|estr|estrada|via|largo|marginal|viela|beco)\s+/;
 
+        // Chave de comparação tolerante a grafias que variam em nomes próprios:
+        // Luiz/Luís, Sylvio/Silvio, Theophilo/Teofilo. Aplicada aos dois lados.
+        function chaveBusca(texto) {
+            return normalizar(texto)
+                .replace(/ph/g, 'f')
+                .replace(/z/g, 's')
+                .replace(/y/g, 'i');
+        }
+
         function carregarIndice() {
             if (promessaIndice) return promessaIndice;
             promessaIndice = fetch('ruas.json')
                 .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(dados => {
                     indiceRuas = dados.ruas.map(([nome, ci, lat, lng, aprox]) => {
-                        const norm = normalizar(nome);
+                        const chave = chaveBusca(nome);
                         return {
                             nome, lat, lng, aprox,
                             cidade: dados.cidades[ci],
-                            norm,
-                            nucleo: norm.replace(PREFIXO_VIA, '')
+                            chave,
+                            nucleo: chave.replace(PREFIXO_VIA, '')
                         };
                     });
                     return indiceRuas;
@@ -425,19 +434,35 @@
         function buscarNoIndice(query) {
             if (!indiceRuas || indiceRuas.length === 0) return [];
 
-            // "Rua X, Jardim Y" -> rua = "Rua X"; o resto vira filtro de cidade (se houver)
-            const partes = query.split(',');
-            let textoRua = normalizar(partes[0]);
-            const resto = normalizar(partes.slice(1).join(' '));
-            const tudo = normalizar(query);
+            // O usuário digita em qualquer ordem: "Rua X, 288", "288, Rua X",
+            // "Rua X 288, Bairro". Então procuramos qual pedaço é a rua em vez
+            // de assumir que é sempre o primeiro.
+            const partes = query.split(',').map(p => normalizar(p)).filter(Boolean);
+            if (partes.length === 0) return [];
 
-            // Número da casa: no fim da rua ("Rua X 288") ou logo após a vírgula
             let numero = null;
+            let idxRua = -1;
+            for (let i = 0; i < partes.length; i++) {
+                if (/^\d{1,6}$/.test(partes[i])) {          // pedaço só com número
+                    if (!numero) numero = partes[i];
+                    continue;
+                }
+                if (idxRua === -1 && /[a-z]/.test(partes[i])) idxRua = i;
+            }
+            if (idxRua === -1) return [];
+
+            let textoRua = partes[idxRua];
+            const resto = partes.filter((_, i) => i !== idxRua).join(' ');
+            const tudo = partes.join(' ');
+
+            // Número grudado no fim da rua ("Rua X 288")
             const comNumero = textoRua.match(/^(.*?)\s+(\d{1,6})$/);
-            if (comNumero) { textoRua = comNumero[1].trim(); numero = comNumero[2]; }
-            else {
-                // Aceita "1190" e também "1190 - Jardim Bela Vista"
-                const n = (partes[1] || '').trim().match(/^(\d{1,6})\b/);
+            if (comNumero) {
+                textoRua = comNumero[1].trim();
+                if (!numero) numero = comNumero[2];
+            } else if (!numero) {
+                // Número no começo do pedaço seguinte ("1190 - Jardim Bela Vista")
+                const n = (partes[idxRua + 1] || '').match(/^(\d{1,6})\b/);
                 if (n) numero = n[1];
             }
 
@@ -449,14 +474,14 @@
                 if (resto.includes(c) || tudo.includes(c)) { cidadeFiltro = c; break; }
             }
 
-            const nucleoBusca = textoRua.replace(PREFIXO_VIA, '');
+            const nucleoBusca = chaveBusca(textoRua).replace(PREFIXO_VIA, '');
             const termos = nucleoBusca.split(' ').filter(Boolean);
             if (termos.length === 0) return [];
 
             const achados = [];
             for (const rua of indiceRuas) {
                 if (cidadeFiltro && normalizar(rua.cidade) !== cidadeFiltro) continue;
-                if (!termos.every(t => rua.norm.includes(t))) continue;
+                if (!termos.every(t => rua.chave.includes(t))) continue;
 
                 let pontos = 0;
                 if (rua.nucleo === nucleoBusca) pontos += 100;
@@ -611,9 +636,14 @@
                         `&q=${encodeURIComponent(q)}&countrycodes=br` +
                         `&viewbox=${RP_VIEWBOX}&bounded=1&limit=${limit}` +
                         `&addressdetails=1&dedupe=1&accept-language=pt-BR`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Busca indisponível');
-            return response.json();
+            // O serviço público limita requisições; uma segunda tentativa curta
+            // resolve a maioria dos 429/503 sem o usuário perceber.
+            for (let tentativa = 0; tentativa < 2; tentativa++) {
+                const response = await fetch(url);
+                if (response.ok) return response.json();
+                if (tentativa === 0) await new Promise(r => setTimeout(r, 700));
+            }
+            throw new Error('Busca indisponível');
         }
 
         // Ordena: cidades atendidas primeiro, depois endereços mais específicos
@@ -700,8 +730,11 @@
                 let subText = '';
 
                 if (isCep) {
-                    mainText = item.street;
-                    subText = `${item.neighborhood} - CEP Encontrado`;
+                    // CEP geral de cidade não traz rua nem bairro (vinham como "null")
+                    mainText = item.street || `${item.city} - ${item.state}`;
+                    subText = item.street
+                        ? [item.neighborhood, 'CEP encontrado'].filter(Boolean).join(' • ')
+                        : 'CEP geral da cidade • localização aproximada';
                 } else if (isLocal) {
                     mainText = item.numero ? `${item.nome}, ${item.numero}` : item.nome;
                     subText = item.aprox ? `${item.cidade} • via extensa` : item.cidade;
